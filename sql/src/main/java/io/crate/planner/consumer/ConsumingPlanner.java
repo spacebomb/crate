@@ -21,6 +21,7 @@
 
 package io.crate.planner.consumer;
 
+import io.crate.action.sql.SessionContext;
 import io.crate.analyze.QuerySpec;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.QueriedRelation;
@@ -72,7 +73,8 @@ public class ConsumingPlanner {
 
     @Nullable
     public Plan plan(AnalyzedRelation relation, ConsumerContext consumerContext) {
-        relation = optimizer.optimize(relation);
+        SessionContext sessionContext = consumerContext.plannerContext().transactionContext().sessionContext();
+        relation = optimizer.optimize(relation, sessionContext);
 
         Map<Plan, SelectSymbol> subQueries = getSubQueries(relation, consumerContext);
         for (Consumer consumer : consumers) {

@@ -29,9 +29,12 @@ import java.util.Map;
 
 public class SessionSettingRegistry {
 
+    public static final String DEFAULT_SCHEMA_KEY = "search_path";
+    public static final String SEMI_JOIN_KEY = "semi_joins";
+
     private static final Map<String, SessionSettingApplier> SESSION_SETTINGS =
         ImmutableMap.<String, SessionSettingApplier>builder()
-            .put("search_path", (parameters, expressions, context) -> {
+            .put(DEFAULT_SCHEMA_KEY, (parameters, expressions, context) -> {
                 if (expressions.size() > 0) {
                     // The search_path takes a schema name as a string or comma-separated list of schema names.
                     // In the second case only the first schema in the list will be used.
@@ -42,7 +45,14 @@ public class SessionSettingRegistry {
                 } else {
                     context.setDefaultSchema(null);
                 }
-            }).build();
+            })
+            .put(SEMI_JOIN_KEY, (parameters, expressions, context) -> {
+                if (expressions.size() == 1) {
+                    String value = ExpressionToStringVisitor.convert(expressions.get(0), parameters);
+                    context.setSemiJoinsRewriteEnabled(Boolean.valueOf(value));
+                }
+            })
+            .build();
 
 
     public static SessionSettingApplier getApplier(String setting) {

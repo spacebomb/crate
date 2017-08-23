@@ -22,6 +22,7 @@
 
 package io.crate.planner.consumer;
 
+import io.crate.action.sql.SessionContext;
 import io.crate.analyze.QueriedTable;
 import io.crate.analyze.relations.AnalyzedRelation;
 import io.crate.analyze.relations.AnalyzedRelationVisitor;
@@ -35,25 +36,28 @@ class OptimizingRewriter {
     /*
      * Return the relation as is or a re-written relation
      */
-    public AnalyzedRelation optimize(AnalyzedRelation relation) {
-        return VISITOR.process(relation, null);
+    public AnalyzedRelation optimize(AnalyzedRelation relation, SessionContext sessionContext) {
+        return VISITOR.process(relation, sessionContext);
     }
 
-    private static class Visitor extends AnalyzedRelationVisitor<Void, AnalyzedRelation> {
+    private static class Visitor extends AnalyzedRelationVisitor<SessionContext, AnalyzedRelation> {
 
         @Override
-        protected AnalyzedRelation visitAnalyzedRelation(AnalyzedRelation relation, Void context) {
+        protected AnalyzedRelation visitAnalyzedRelation(AnalyzedRelation relation, SessionContext context) {
             return relation;
         }
 
         @Override
-        public AnalyzedRelation visitQueriedTable(QueriedTable table, Void context) {
+        public AnalyzedRelation visitQueriedTable(QueriedTable table, SessionContext context) {
             return super.visitQueriedTable(table, context);
         }
 
         @Override
-        public AnalyzedRelation visitQueriedDocTable(QueriedDocTable table, Void context) {
-            QueriedRelation rewrite = SemiJoins.tryRewrite(table);
+        public AnalyzedRelation visitQueriedDocTable(QueriedDocTable table, SessionContext context) {
+            QueriedRelation rewrite = null;
+            if (context.getSemiJoinsRewriteEnabled()) {
+                rewrite = SemiJoins.tryRewrite(table);
+            }
             if (rewrite != null) {
                 return rewrite;
             }

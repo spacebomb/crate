@@ -27,6 +27,8 @@ import io.crate.analyze.relations.QueriedRelation;
 import io.crate.analyze.symbol.Function;
 import io.crate.analyze.symbol.SelectSymbol;
 import io.crate.analyze.symbol.Symbol;
+import io.crate.planner.Plan;
+import io.crate.planner.node.dql.join.NestedLoop;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
 import io.crate.testing.T3;
@@ -36,7 +38,9 @@ import org.junit.Test;
 import java.util.List;
 
 import static io.crate.testing.TestingHelpers.isSQL;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 
 public class SemiJoinsTest extends CrateDummyClusterServiceUnitTest {
@@ -104,5 +108,11 @@ public class SemiJoinsTest extends CrateDummyClusterServiceUnitTest {
         QueriedRelation semiJoin = SemiJoins.tryRewrite(rel);
 
         assertThat(semiJoin, nullValue());
+    }
+
+    @Test
+    public void testDisabledByDefault() throws Exception {
+        Plan plan = executor.plan("select * from t1 where a in (select 'foo')");
+        assertThat(plan, not(instanceOf(NestedLoop.class)));
     }
 }

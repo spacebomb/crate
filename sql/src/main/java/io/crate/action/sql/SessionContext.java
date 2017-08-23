@@ -39,11 +39,13 @@ public class SessionContext implements StatementAuthorizedValidator, ExceptionAu
 
     private final int defaultLimit;
     private final Set<Option> options;
-    private String defaultSchema;
     @Nullable
     private final User user;
     private final StatementAuthorizedValidator statementAuthorizedValidator;
     private final ExceptionAuthorizedValidator exceptionAuthorizedValidator;
+
+    private String defaultSchema;
+    private boolean semiJoinsRewriteEnabled;
 
     public SessionContext(@Nullable String defaultSchema,
                           @Nullable User user,
@@ -77,6 +79,14 @@ public class SessionContext implements StatementAuthorizedValidator, ExceptionAu
 
     public void setDefaultSchema(@Nullable String schema) {
         defaultSchema = MoreObjects.firstNonNull(schema, Schemas.DEFAULT_SCHEMA_NAME);
+    }
+
+    public void setSemiJoinsRewriteEnabled(boolean flag) {
+        this.semiJoinsRewriteEnabled = flag;
+    }
+
+    public boolean getSemiJoinsRewriteEnabled() {
+        return semiJoinsRewriteEnabled;
     }
 
     @Nullable
