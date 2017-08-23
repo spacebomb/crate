@@ -33,11 +33,12 @@ import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.fail;
 
 public class SessionSettingRegistryTest {
 
     @Test
-    public void testSemiJoins() {
+    public void testSemiJoinSessionSetting() {
         SessionContext sessionContext = new SessionContext(null, null, x -> {}, x -> {});
         SessionSettingApplier applier = SessionSettingRegistry.getApplier(SessionSettingRegistry.SEMI_JOIN_KEY);
 
@@ -48,10 +49,18 @@ public class SessionSettingRegistryTest {
         assertThat(sessionContext.getSemiJoinsRewriteEnabled(), is(false));
         applier.apply(Row.EMPTY, generateInput("TrUe"), sessionContext);
         assertThat(sessionContext.getSemiJoinsRewriteEnabled(), is(true));
-        applier.apply(Row.EMPTY, generateInput(""), sessionContext);
-        assertThat(sessionContext.getSemiJoinsRewriteEnabled(), is(false));
-        applier.apply(Row.EMPTY, generateInput("invalid", "input"), sessionContext);
-        assertThat(sessionContext.getSemiJoinsRewriteEnabled(), is(false));
+        try {
+            applier.apply(Row.EMPTY, generateInput(""), sessionContext);
+            fail("Should have failed to apply setting.");
+        } catch (IllegalArgumentException e) {
+            assertThat(sessionContext.getSemiJoinsRewriteEnabled(), is(true));
+        }
+        try {
+            applier.apply(Row.EMPTY, generateInput("invalid", "input"), sessionContext);
+            fail("Should have failed to apply setting.");
+        } catch (IllegalArgumentException e) {
+            assertThat(sessionContext.getSemiJoinsRewriteEnabled(), is(true));
+        }
     }
 
     private static List<Expression> generateInput(String... inputs) {

@@ -23,7 +23,9 @@
 package io.crate.metadata.settings.session;
 
 import com.google.common.collect.ImmutableMap;
+import io.crate.analyze.expressions.ExpressionToObjectVisitor;
 import io.crate.analyze.expressions.ExpressionToStringVisitor;
+import io.crate.types.BooleanType;
 
 import java.util.Map;
 
@@ -48,8 +50,11 @@ public class SessionSettingRegistry {
             })
             .put(SEMI_JOIN_KEY, (parameters, expressions, context) -> {
                 if (expressions.size() == 1) {
-                    String value = ExpressionToStringVisitor.convert(expressions.get(0), parameters);
-                    context.setSemiJoinsRewriteEnabled(Boolean.valueOf(value));
+                    Object value = ExpressionToObjectVisitor.convert(expressions.get(0), parameters);
+                    boolean booleanValue = BooleanType.INSTANCE.value(value);
+                    context.setSemiJoinsRewriteEnabled(booleanValue);
+                } else {
+                    throw new IllegalArgumentException(SEMI_JOIN_KEY + " should have only one argument.");
                 }
             })
             .build();
