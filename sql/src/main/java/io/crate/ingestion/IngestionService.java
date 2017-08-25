@@ -36,6 +36,7 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.settings.Settings;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,6 +52,7 @@ public class IngestionService extends AbstractLifecycleComponent implements Clus
     private final ClusterService clusterService;
     private final Map<String, List<IngestionImplementation>> implementations = new HashMap<>();
     private final Schemas schemas;
+    private IngestRulesMetaData previousIngestRulesMetaData;
 
     @Inject
     public IngestionService(Settings settings,
@@ -69,7 +71,12 @@ public class IngestionService extends AbstractLifecycleComponent implements Clus
     public void registerImplementation(String sourceIdent, IngestionImplementation implementation) {
         List<IngestionImplementation> implementationsForSource = implementations.computeIfAbsent(sourceIdent, k -> new ArrayList<>());
         implementationsForSource.add(implementation);
-        implementation.applyRules(getIngestionRules(clusterService.state().metaData()).getOrDefault(sourceIdent, Collections.emptySet()));
+        Map<String, Set<IngestRule>> ingestionRules = getIngestionRulesIfChangedOrNull(clusterService.state().metaData());
+        if (ingestionRules == null) {
+            implementation.applyRules(Collections.emptySet());
+        } else {
+            implementation.applyRules(ingestionRules.getOrDefault(sourceIdent, Collections.emptySet()));
+        }
     }
 
     @Override
@@ -78,7 +85,10 @@ public class IngestionService extends AbstractLifecycleComponent implements Clus
             return;
         }
 
-        Map<String, Set<IngestRule>> ingestionRules = getIngestionRules(event.state().metaData());
+        Map<String, Set<IngestRule>> ingestionRules = getIngestionRulesIfChangedOrNull(event.state().metaData());
+        if(ingestionRules == null) {
+            return;
+        }
         filterOutInvalidRules(ingestionRules);
         for (Map.Entry<String, List<IngestionImplementation>> entry : implementations.entrySet()) {
             String sourceIdent = entry.getKey();
@@ -102,9 +112,18 @@ public class IngestionService extends AbstractLifecycleComponent implements Clus
         }
     }
 
-    private Map<String, Set<IngestRule>> getIngestionRules(MetaData metaData) {
+    @Nullable
+    private Map<String, Set<IngestRule>> getIngestionRulesIfChangedOrNull(MetaData metaData) {
         IngestRulesMetaData ingestRulesMetaData =
             (IngestRulesMetaData) metaData.customs().get(IngestRulesMetaData.TYPE);
+
+        if (previousIngestRulesMetaData == null) {
+            previousIngestRulesMetaData = ingestRulesMetaData;
+        } else {
+            if (previousIngestRulesMetaData.equals(ingestRulesMetaData)) {
+                return null;
+            }
+        }
 
         if (ingestRulesMetaData != null) {
             Map<String, Set<IngestRule>> ingestRules = ingestRulesMetaData.getIngestRules();
